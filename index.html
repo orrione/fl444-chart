@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grafico livelli FL444</title>
+<!--
+  Grafico con i livelli del bot FL444 (31/10/2026, docs/Grafico_Livelli.md). Pagina statica per GitHub Pages, aperta
+  come Mini App di Telegram dal pulsante "Grafico" del menu di un EA.
+
+  Il frammento dell'indirizzo (dopo #, non arriva a nessun server) porta: g = gist segreto, r = revisione, f = file,
+  k = chiave (32 byte, base64url). Il gist contiene "FL1" + nonce + tag + dati cifrati, in base64: tag HMAC-SHA256 su
+  nonce + dati, keystream HMAC-SHA256(nonce || contatore), chiavi derivate con HMAC(k, "enc") e HMAC(k, "mac"); poi
+  zlib e JSON. Lo stesso schema di chart_encrypt nel bot (src/fl444_bot.py).
+
+  Prova senza gist: #u=<indirizzo di un file>&k=<chiave> (file cifrato) oppure #u=<indirizzo di un .json> (in chiaro).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #eef2f5; --surface: #ffffff; --fg: #15202b; --muted: #5b6977; --line: #d6dee5; --accent: #2b7bc9;
+  --up: #1e9a68; --down: #cf4556; --up-faded: #b9dccd; --down-faded: #ecc0c6;
+  --lv38: #1e9a68; --lv61: #c99a0e; --lv78: #dd7a17; --lv100: #c4501a; --lv138: #d12f2f; --lvpp: #8794a1;
+  --burnt: #a8b3bd; --pos: #6d4fd1;
+  --hi: #fff6dc; --err: #b42318;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1621; --surface: #17212b; --fg: #e4ebf2; --muted: #8a9aab; --line: #263444; --accent: #5ea8f2;
+  --up: #3dbb87; --down: #ee6a79; --up-faded: #23473a; --down-faded: #4d2a31;
+  --lv38: #3dbb87; --lv61: #e2b63a; --lv78: #f0954a; --lv100: #ec7546; --lv138: #f2545b; --lvpp: #7c8b9b;
+  --burnt: #4f5d6b; --pos: #a58cf5;
+  --hi: #2c2a1c; --err: #f2545b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1621; --surface: #17212b; --fg: #e4ebf2; --muted: #8a9aab; --line: #263444; --accent: #5ea8f2;
+  --up: #3dbb87; --down: #ee6a79; --up-faded: #23473a; --down-faded: #4d2a31;
+  --lv38: #3dbb87; --lv61: #e2b63a; --lv78: #f0954a; --lv100: #ec7546; --lv138: #f2545b; --lvpp: #7c8b9b;
+  --burnt: #4f5d6b; --pos: #a58cf5;
+  --hi: #2c2a1c; --err: #f2545b; color-scheme: dark }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-ui); font-size: 15px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  --gap-top: 12px; --gap-bottom: 20px;
+  padding-top: calc(var(--gap-top) + var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--gap-bottom) + var(--tg-safe-area-inset-bottom, 0px)); }
+.app { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; }
+.sub { color: var(--muted); font-size: 13px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button { font: inherit; color: var(--fg); }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.chip.plain { margin-left: auto; }
+.chip.icon { padding: 5px 9px; display: inline-flex; align-items: center; }
+.chip.icon svg { width: 14px; height: 14px; display: block; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.info { font-size: 13px; color: var(--muted); }
+.info b { color: var(--fg); font-weight: 600; }
+.msg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; color: var(--muted); }
+.msg.err { color: var(--err); border-color: var(--err); }
+#chart { height: clamp(260px, 54vh, 560px); width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.col { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.col h2 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.lv { display: grid; grid-template-columns: 10px 3.6em 1fr auto; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 6px;
+  font-family: var(--font-num); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.lv .dot { width: 10px; height: 3px; border-radius: 2px; }
+.lv .dot.tr { background-image: linear-gradient(90deg, currentColor 50%, transparent 50%) !important; background-size: 4px 3px; }
+.lv .nm { font-family: var(--font-ui); font-weight: 600; font-size: 12px; }
+.lv .px { text-align: right; }
+.lv .ds { text-align: right; color: var(--muted); min-width: 4.2em; }
+.lv.last { background: var(--hi); }
+.lv.burnt .nm, .lv.burnt .px { color: var(--muted); text-decoration: line-through; }
+.lv.off { opacity: .45; }
+.col p { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
+.pos { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.prow { display: grid; grid-template-columns: 11em 1fr auto; gap: 2px 10px; }
+.pos .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+.pos .when { color: var(--muted); }
+.pos .buy { color: var(--up); font-weight: 600; }
+.pos .sell { color: var(--down); font-weight: 600; }
+footer { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.stamp { font-style: italic; color: var(--fg); }
+.foot-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; }
+.credit { font-size: 11px; color: var(--muted); text-decoration: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw.dash { background-image: linear-gradient(90deg, var(--muted) 55%, transparent 55%) !important; background-size: 5px 3px; }
+.note { border-left: 3px solid var(--line); padding-left: 8px; }
+[hidden] { display: none !important; }
+@media (max-width: 520px) {
+  body { --gap-top: 8px; --gap-bottom: 16px; }
+  .app { gap: 8px; }
+  h1 { font-size: 16px; }
+  .prow { grid-template-columns: 1fr auto; }
+  .pos .when { grid-column: 1 / -1; order: 3; text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 id="title">Grafico FL444</h1>
+    <span class="sub" id="sub"></span>
+  </header>
+  <div class="msg" id="msg">Carico il grafico…</div>
+  <div id="main" hidden>
+    <div class="row" style="margin-bottom:8px">
+      <button type="button" class="chip" id="t-MR" aria-pressed="true">MR</button>
+      <button type="button" class="chip" id="t-TR" aria-pressed="true">TR</button>
+      <button type="button" class="chip" id="t-POS" aria-pressed="true">Posizioni</button>
+      <button type="button" class="chip icon" id="fit" title="Adatta" aria-label="Adatta"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3v10M14 3v10M5 8h6M7 6L5 8l2 2M9 6l2 2-2 2"/></svg></button>
+      <button type="button" class="chip icon" id="fs" title="Schermo intero" aria-label="Schermo intero" hidden></button>
+    </div>
+    <div class="info" id="info" hidden></div>
+    <div id="chart" role="img" aria-label="Grafico a candele con i livelli del periodo" style="margin-top:8px"></div>
+    <div class="cols" style="margin-top:12px">
+      <div class="col" id="box-MR"><h2 id="mr-head">MR</h2><div id="list-MR"></div></div>
+      <div class="col" id="box-TR"><h2 id="tr-head">TR</h2><div id="list-TR"></div><p id="tr-note"></p></div>
+    </div>
+    <div class="col" id="pos-box" style="margin-top:12px" hidden><h2>Posizioni aperte dell'EA</h2><div class="pos" id="pos-list"></div></div>
+  </div>
+  <footer id="foot" hidden>
+    <div class="foot-top"><span class="stamp" id="stamp"></span><a class="credit" href="https://www.tradingview.com/" target="_blank" rel="noopener">© TradingView</a></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--lv38)"></i>TP 38</span>
+      <span><i class="sw" style="background:var(--lv61)"></i>61</span>
+      <span><i class="sw" style="background:var(--lv78)"></i>78</span>
+      <span><i class="sw" style="background:var(--lv100)"></i>100</span>
+      <span><i class="sw" style="background:var(--lv138)"></i>stop 138</span>
+      <span><i class="sw dash"></i>TR tratteggiato</span>
+      <span><i class="sw" style="background:var(--burnt)"></i>bruciato</span>
+      <span><i class="sw" style="background:var(--pos)"></i>posizione</span>
+    </div>
+    <div class="note">Candele chiare: prima del periodo dei livelli. Distanze in pip dall'ultimo prezzo. Livelli calcolati come l'EA dalla candela del broker; bruciati secondo lo status dell'EA. <span id="burnt-note"></span></div>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && tg.initData) {                 // dentro Telegram: il suo tema; fuori, quello del sistema
+    try { tg.ready(); tg.expand(); } catch (e) {}
+    // il dito sul grafico sposta le candele: niente gesto verso il basso che riduce o chiude la finestra (Bot API 7.7)
+    try { if (tg.isVersionAtLeast && tg.isVersionAtLeast("7.7")) tg.disableVerticalSwipes(); } catch (e) {}
+    var setTheme = function () { if (tg.colorScheme) root.setAttribute("data-theme", tg.colorScheme); };
+    setTheme();
+    try { tg.onEvent("themeChanged", setTheme); } catch (e) {}
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function tok(n) { return getComputedStyle(root).getPropertyValue(n).trim(); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function dmy(t) { var d = new Date(t * 1000); return pad(d.getUTCDate()) + "/" + pad(d.getUTCMonth() + 1) + "/" + d.getUTCFullYear(); }
+  function hm(t) { var d = new Date(t * 1000); return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()); }
+  function numIT(x, dec) { return Number(x).toLocaleString("it-IT", { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+  var MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+
+  function fail(text) {
+    var m = $("msg"); m.textContent = text; m.className = "msg err"; m.hidden = false; $("main").hidden = true;
+  }
+
+  // ---------------------------------------------------------------- dati: gist o prova locale, poi decifratura
+  function params() {
+    var out = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (p) {
+      var i = p.indexOf("="); if (i > 0) out[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1));
+    });
+    return out;
+  }
+  function b64(s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function b64url(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return b64(s); }
+  function utf8(s) { return new TextEncoder().encode(s); }
+  async function hkey(raw) { return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]); }
+  async function hsign(key, data) { return new Uint8Array(await crypto.subtle.sign("HMAC", key, data)); }
+
+  async function decrypt(blob, k) {
+    var raw = b64(blob.trim());
+    if (raw[0] !== 70 || raw[1] !== 76 || raw[2] !== 49) throw new Error("formato dei dati sconosciuto");
+    var nonce = raw.slice(3, 19), tag = raw.slice(19, 51), ct = raw.slice(51);
+    var key = await hkey(b64url(k));
+    var ke = await hkey(await hsign(key, utf8("enc"))), km = await hkey(await hsign(key, utf8("mac")));
+    var mac = new Uint8Array(nonce.length + ct.length); mac.set(nonce); mac.set(ct, nonce.length);
+    if (!(await crypto.subtle.verify("HMAC", km, tag, mac))) throw new Error("chiave sbagliata o dati alterati");
+    var n = Math.ceil(ct.length / 32), jobs = [];
+    for (var i = 0; i < n; i++) {
+      var c = new Uint8Array(20); c.set(nonce); new DataView(c.buffer).setUint32(16, i, false);
+      jobs.push(hsign(ke, c));
+    }
+    var ks = await Promise.all(jobs), out = new Uint8Array(ct.length);
+    for (var j = 0; j < ct.length; j++) out[j] = ct[j] ^ ks[j >> 5][j & 31];
+    var txt = await new Response(new Blob([out]).stream().pipeThrough(new DecompressionStream("deflate"))).text();
+    return JSON.parse(txt);
+  }
+
+  async function load() {
+    var p = params();
+    if (p.g && p.r && p.k) {
+      var r = await fetch("https://api.github.com/gists/" + encodeURIComponent(p.g) + "/" + encodeURIComponent(p.r),
+                          { headers: { Accept: "application/vnd.github+json" } });
+      if (!r.ok) throw new Error(r.status === 404 ? "grafico non trovato su GitHub" : "GitHub ha risposto " + r.status);
+      var j = await r.json(), f = j.files[p.f || Object.keys(j.files)[0]];
+      if (!f) throw new Error("file del grafico assente nel gist");
+      var content = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+      return decrypt(content, p.k);
+    }
+    if (p.u) {
+      var t = await (await fetch(p.u)).text();
+      return p.k ? decrypt(t, p.k) : JSON.parse(t);
+    }
+    throw new Error("indirizzo senza i dati del grafico: aprilo dal pulsante del bot");
+  }
+
+  // ---------------------------------------------------------------- disegno
+  var state = { MR: true, TR: true, POS: true };
+  var D, chart, series, lines = [], names;
+
+  // nomi dei livelli piccoli a sinistra delle linee, senza riquadro (01/11/2026): una primitiva della serie
+  // (plugin di Lightweight Charts 4.1+). Due nomi troppo vicini in verticale si affiancano invece di sovrapporsi.
+  // Allo stesso modo, a destra, le posizioni (04/11/2026): lato e lotti, il resto nel riquadro Posizioni.
+  function LevelNames() {
+    var self = this;
+    this.items = [];
+    this.right = [];
+    this.view = { zOrder: function () { return "top"; }, renderer: function () { return { draw: function (target) {
+      if (!self.series) return;
+      target.useMediaCoordinateSpace(function (sc) {
+        var ctx = sc.context, rows = [];
+        ctx.font = "500 10px " + tok("--font-num");
+        ctx.textBaseline = "bottom";
+        ctx.lineJoin = "round";
+        self.items.forEach(function (it) {
+          var y = self.series.priceToCoordinate(it.price);
+          if (y !== null && y > 10 && y < sc.mediaSize.height + 10) rows.push({ y: y, it: it });
+        });
+        rows.sort(function (a, b) { return a.y - b.y; });
+        var prevY = -99, x = 4, halo = tok("--surface");
+        rows.forEach(function (r) {
+          x = (r.y - prevY < 11) ? x : 4;
+          ctx.strokeStyle = halo; ctx.lineWidth = 3; ctx.strokeText(r.it.text, x, r.y - 2);
+          ctx.fillStyle = r.it.color; ctx.fillText(r.it.text, x, r.y - 2);
+          x += ctx.measureText(r.it.text).width + 8;
+          prevY = r.y;
+        });
+        var rows2 = [];
+        self.right.forEach(function (it) {
+          var y = self.series.priceToCoordinate(it.price);
+          if (y !== null && y > 10 && y < sc.mediaSize.height + 10) rows2.push({ y: y, it: it });
+        });
+        rows2.sort(function (a, b) { return a.y - b.y; });
+        var edge = sc.mediaSize.width - 4, xr = edge;
+        prevY = -99;
+        rows2.forEach(function (r) {
+          xr = (r.y - prevY < 11) ? xr : edge;
+          var w = ctx.measureText(r.it.text).width;
+          ctx.strokeStyle = halo; ctx.lineWidth = 3; ctx.strokeText(r.it.text, xr - w, r.y - 2);
+          ctx.fillStyle = r.it.color; ctx.fillText(r.it.text, xr - w, r.y - 2);
+          xr -= w + 8;
+          prevY = r.y;
+        });
+      });
+    } }; } };
+  }
+  LevelNames.prototype.attached = function (p) { this.series = p.series; this.requestUpdate = p.requestUpdate; };
+  LevelNames.prototype.detached = function () { this.series = null; this.requestUpdate = null; };
+  LevelNames.prototype.paneViews = function () { return [this.view]; };
+  LevelNames.prototype.updateAllViews = function () {};
+  LevelNames.prototype.set = function (items, right) { this.items = items; this.right = right || []; if (this.requestUpdate) this.requestUpdate(); };
+
+  function levelColor(name) {
+    var m = name.match(/(38|61|78|100|138|161|200)$/);
+    return tok({ "38": "--lv38", "61": "--lv61", "78": "--lv78", "100": "--lv100", "138": "--lv138", "161": "--lv138", "200": "--lv138" }[m ? m[1] : ""] || "--lvpp");
+  }
+
+  // livelli d'ingresso ancora validi secondo lo status (null = non si sa)
+  function liveSets() {
+    var st = (D.ea && D.ea.status) || {}, v = D.view, out = {};
+    function set(key) { var s = st[key]; if (s === undefined) return null; return (s === "OUT" || s === "NONE") ? [] : s.split("/"); }
+    out.long = set("MR" + v + "_LongState"); out.short = set("MR" + v + "_ShortState"); out.tr = set("TR" + v + "_State");
+    return out;
+  }
+  function isBurnt(kind, name, live) {
+    var entry = /^(S|R|TR)(61|78|100)$/.test(name);
+    if (!entry) return false;
+    var set = kind === "TR" ? live.tr : (name[0] === "S" ? live.long : live.short);
+    if (set === null) return false;
+    return set.indexOf(name) < 0;
+  }
+  function logicOn(kind) {
+    var st = (D.ea && D.ea.status) || {}, lg = st.WeeklyLogic || st.MonthlyLogic || st.DailyLogic;
+    if (lg === undefined) return true;
+    if (lg === "1") return kind === "MR";
+    if (lg === "2") return kind === "TR";
+    if (lg === "3") return true;   // Yamatai MR+TR (08/11/2026): tutte e due le logiche
+    if (lg === "LOGIC_NONE") return true;
+    return lg.indexOf(kind) >= 0;
+  }
+  function levels() {
+    var out = [], mr = D.mr || {}, tr = D.tr || {};
+    ["R138", "R100", "R78", "R61", "R38", "PP", "S38", "S61", "S78", "S100", "S138"].forEach(function (n) {
+      if (mr[n] !== undefined) out.push({ kind: "MR", name: n, price: mr[n] });
+    });
+    ["TR38", "TR61", "TR78", "TR100", "TR138"].forEach(function (n) { if (tr[n] !== undefined) out.push({ kind: "TR", name: n, price: tr[n] }); });
+    return out;
+  }
+  function posLabel(p) {
+    var c = String(p.comment || "").replace(/^FL444Y?_/, "").replace("_", " ").replace(/TR(38|61|78)\d\b/, "TR$1");
+    return (p.type === "buy" ? "BUY " : "SELL ") + numIT(p.volume, 2) + (c ? " " + c : "");
+  }
+
+  function applyTheme() {
+    chart.applyOptions({
+      layout: { background: { type: "solid", color: tok("--surface") }, textColor: tok("--muted"), fontFamily: tok("--font-num"), fontSize: 11, attributionLogo: false },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      crosshair: { vertLine: { color: tok("--muted"), labelBackgroundColor: tok("--accent") }, horzLine: { color: tok("--muted"), labelBackgroundColor: tok("--accent") } }
+    });
+    series.applyOptions({ upColor: tok("--up"), downColor: tok("--down"), borderUpColor: tok("--up"), borderDownColor: tok("--down"),
+      wickUpColor: tok("--up"), wickDownColor: tok("--down") });
+  }
+
+  function render(fit) {
+    var dg = D.digits, pip = D.pip || Math.pow(10, -dg) * ((dg === 3 || dg === 5) ? 10 : 1);
+    series.applyOptions({ priceFormat: { type: "price", precision: dg, minMove: 1 / Math.pow(10, dg) } });
+    var uf = tok("--up-faded"), df = tok("--down-faded");
+    var bars = D.candles.map(function (c) {
+      var b = { time: c[0], open: c[1], high: c[2], low: c[3], close: c[4] };
+      if (b.time >= D.period_start) return b;
+      var col = b.close >= b.open ? uf : df;
+      b.color = col; b.borderColor = col; b.wickColor = col; return b;
+    });
+    series.setData(bars);
+    lines.forEach(function (l) { series.removePriceLine(l); }); lines = [];
+    var live = liveSets(), lvs = levels(), tags = [];
+    lvs.forEach(function (lv) {
+      if (!state[lv.kind]) return;
+      var burnt = isBurnt(lv.kind, lv.name, live), color = burnt ? tok("--burnt") : levelColor(lv.name);
+      lines.push(series.createPriceLine({ price: lv.price, color: color,
+        lineWidth: lv.name.slice(-3) === "138" ? 2 : 1, lineStyle: burnt ? 1 : (lv.kind === "TR" ? 2 : (lv.name === "PP" ? 1 : 0)),
+        axisLabelVisible: false, title: "" }));
+      tags.push({ price: lv.price, color: color, text: lv.name + (burnt ? " ✕" : "") });
+    });
+    var pos = D.positions || [], marks = [], posTags = [];
+    if (state.POS) {
+      pos.forEach(function (p) {
+        // linea sottile e nome piccolo (04/11/2026): le etichette sull'asse e sulla freccia coprivano le candele
+        lines.push(series.createPriceLine({ price: p.price, color: tok("--pos"), lineWidth: 1, lineStyle: 3, axisLabelVisible: false, title: "" }));
+        posTags.push({ price: p.price, color: tok("--pos"), text: (p.type === "buy" ? "BUY " : "SELL ") + numIT(p.volume, 2) });
+        var t = null;
+        for (var i = 0; i < bars.length; i++) { if (bars[i].time <= p.time) t = bars[i].time; else break; }
+        if (t !== null) marks.push({ time: t, position: p.type === "buy" ? "belowBar" : "aboveBar", color: tok("--pos"),
+          shape: p.type === "buy" ? "arrowUp" : "arrowDown", size: 0.8 });
+      });
+    }
+    names.set(tags, posTags);
+    marks.sort(function (a, b) { return a.time - b.time; });
+    series.setMarkers(marks);
+    // all'apertura le ultime 70 candele, piu' leggibili (04/11/2026); l'icona accanto ai pulsanti le mostra tutte
+    if (fit) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, bars.length - 70), to: bars.length + 3 });
+
+    var last = bars[bars.length - 1];
+    // solo il mantenimento, che cambia il senso dei livelli: il resto della vecchia intestazione e' tolto (01/11/2026)
+    $("info").hidden = !D.held_from;
+    $("info").innerHTML = D.held_from ? "<b>Livelli del giorno del ciclo</b> (posizioni ancora aperte, mantenimento)" : "";
+    ["MR", "TR"].forEach(function (k) {
+      var rows = lvs.filter(function (lv) { return lv.kind === k; }).sort(function (a, b) { return b.price - a.price; });
+      var near = null, best = Infinity;
+      rows.forEach(function (lv) { var d = Math.abs(lv.price - last.close); if (d < best) { best = d; near = lv; } });
+      $("list-" + k).innerHTML = rows.map(function (lv) {
+        var d = (lv.price - last.close) / pip, burnt = isBurnt(k, lv.name, live);
+        return '<div class="lv' + (lv === near ? " last" : "") + (burnt ? " burnt" : "") + (state[k] ? "" : " off") + '">' +
+          '<i class="dot' + (k === "TR" ? " tr" : "") + '" style="background:' + (burnt ? tok("--burnt") : levelColor(lv.name)) + ';color:' + levelColor(lv.name) + '"></i>' +
+          '<span class="nm">' + lv.name + '</span><span class="px">' + Number(lv.price).toFixed(dg) + '</span>' +
+          '<span class="ds">' + (d >= 0 ? "+" : "−") + numIT(Math.abs(d), 1) + '</span></div>';
+      }).join("");
+    });
+    var bull = (D.tr || {}).dir === "BULL", cand = { W: "della settimana prima", M: "del mese prima", D: "di ieri" }[D.view] || "";
+    $("tr-head").textContent = "TR " + (bull ? "long" : "short");
+    $("tr-note").textContent = "Candela " + cand + (bull ? " verde: TR solo sul lato long." : " rossa o doji: TR solo sul lato short.");
+    var anyStatus = live.long !== null || live.short !== null || live.tr !== null;
+    $("burnt-note").textContent = anyStatus ? "Barrati: livelli d'ingresso gia' bruciati o lato concluso nel periodo." : "Stato dei livelli non disponibile.";
+    $("pos-box").hidden = !pos.length;
+    $("pos-list").innerHTML = pos.map(function (p) {
+      var d = ((p.type === "buy" ? 1 : -1) * (last.close - p.price)) / pip;
+      return '<div class="prow"><span class="' + p.type + '">' + esc(posLabel(p)) + '</span><span class="num when">' + Number(p.price).toFixed(dg) + " · " + dmy(p.time) + " " + hm(p.time) +
+        '</span><span class="num">' + (d >= 0 ? "+" : "−") + numIT(Math.abs(d), 1) + " pip · " + numIT(p.profit, 2) + "</span></div>";
+    }).join("");
+    ["MR", "TR", "POS"].forEach(function (k) { $("t-" + k).setAttribute("aria-pressed", String(state[k])); });
+    $("t-POS").hidden = !pos.length;
+  }
+
+  function start(data) {
+    D = data;
+    if (D.error) return fail("Il servizio ha risposto: " + D.error);
+    var ea = D.ea || {};
+    $("title").textContent = (ea.name || D.sym) + " · " + (ea.view_label || D.view);
+    // il time frame delle candele accanto alla famiglia (01/11/2026: con l'intestazione tolta non si vedeva piu'; l'ora
+    // del grafico tolta lo stesso giorno, resta l'ora del server in fondo)
+    $("sub").textContent = (ea.family || (D.fam === "Y" ? "Yamatai" : "Futureland")) + (D.candle_tf ? " · " + D.candle_tf : "");
+    $("stamp").textContent = "⏱️ " + String(D.server_time_s || "").replace(/^(\d{4})\.(\d{2})\.(\d{2}) (\d\d:\d\d).*$/, "$3/$2/$1 $4") + " ora del server";
+    state.MR = logicOn("MR"); state.TR = logicOn("TR");
+    // una logica spenta non ha ne' riquadro ne' pulsante (01/11/2026)
+    ["MR", "TR"].forEach(function (k) { $("box-" + k).hidden = !state[k]; $("t-" + k).hidden = !state[k]; });
+    $("msg").hidden = true; $("main").hidden = false; $("foot").hidden = false;
+    var LC = window.LightweightCharts;
+    chart = LC.createChart($("chart"), {
+      autoSize: true,
+      localization: { locale: "it-IT", timeFormatter: function (t) { return dmy(t) + " " + hm(t); } },
+      timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 4, borderVisible: false,
+        tickMarkFormatter: function (t, type) {
+          var d = new Date(t * 1000);
+          if (type === 0) return String(d.getUTCFullYear());
+          if (type === 1) return MONTHS[d.getUTCMonth()];
+          if (type === 2) return pad(d.getUTCDate()) + "/" + pad(d.getUTCMonth() + 1);
+          return hm(t);
+        } },
+      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.06, bottom: 0.06 } },
+      crosshair: { mode: 0 },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+    });
+    series = chart.addCandlestickSeries({ priceLineVisible: true, lastValueVisible: true,
+      // la scala segue le candele visibili: gli ordini aperti restano sempre dentro, anche se aperti prima (04/11/2026)
+      autoscaleInfoProvider: function (original) {
+        var r = original();
+        if (!r || !r.priceRange || !state.POS) return r;
+        (D.positions || []).forEach(function (p) {
+          r.priceRange.minValue = Math.min(r.priceRange.minValue, p.price);
+          r.priceRange.maxValue = Math.max(r.priceRange.maxValue, p.price);
+        });
+        return r;
+      } });
+    names = new LevelNames();
+    series.attachPrimitive(names);
+    ["MR", "TR", "POS"].forEach(function (k) {
+      $("t-" + k).addEventListener("click", function () { state[k] = !state[k]; render(false); });
+    });
+    $("fit").addEventListener("click", function () { chart.timeScale().fitContent(); });
+    setupFullscreen();
+    fitHeight();
+    window.addEventListener("resize", fitHeight);
+    if (inTg) try { tg.onEvent("viewportChanged", function (e) { if (!e || e.isStateStable) fitHeight(); }); } catch (e) {}
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeight);
+    var retheme = function () { applyTheme(); render(false); };
+    try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme); } catch (e) {}
+    new MutationObserver(retheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    applyTheme();
+    render(true);
+  }
+
+  // ---------------------------------------------------------------- altezza del grafico e schermo intero (01/11/2026)
+  var inTg = !!(tg && tg.initData);
+
+  // il grafico prende l'altezza della finestra sotto titolo e pulsanti; in verticale resta in fondo una striscia del
+  // riquadro dei livelli, per far capire che sotto c'e' altro
+  function fitHeight() {
+    var el = $("chart");
+    if (!el || $("main").hidden) return;
+    var vh = (inTg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
+    var top = el.getBoundingClientRect().top + window.scrollY;
+    var peek = vh >= 520 ? 52 : 12;
+    el.style.height = Math.max(220, Math.round(vh - top - peek)) + "px";
+  }
+
+  var ICON_IN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
+  var ICON_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg>';
+
+  // Telegram dalla Bot API 8.0 (requestFullscreen); fuori da Telegram lo schermo intero del browser, dove c'e'
+  // (non su Safari dell'iPhone). Dove non si puo', il pulsante non compare.
+  function setupFullscreen() {
+    var b = $("fs");
+    var tgFs = inTg && typeof tg.requestFullscreen === "function" && tg.isVersionAtLeast && tg.isVersionAtLeast("8.0");
+    var docFs = !inTg && document.fullscreenEnabled && typeof root.requestFullscreen === "function";
+    if (!tgFs && !docFs) return;
+    function isFs() { return tgFs ? !!tg.isFullscreen : !!document.fullscreenElement; }
+    function show() {
+      var on = isFs();
+      b.innerHTML = on ? ICON_OUT : ICON_IN;
+      b.title = on ? "Esci dallo schermo intero" : "Schermo intero";
+      b.setAttribute("aria-label", b.title);
+      setTimeout(fitHeight, 50);
+    }
+    b.addEventListener("click", function () {
+      try {
+        if (tgFs) { if (isFs()) tg.exitFullscreen(); else tg.requestFullscreen(); }
+        else if (isFs()) document.exitFullscreen();
+        else root.requestFullscreen().catch(function () {});
+      } catch (e) {}
+    });
+    if (tgFs) {
+      tg.onEvent("fullscreenChanged", show);
+      tg.onEvent("fullscreenFailed", function (e) { if (e && e.error === "UNSUPPORTED") b.hidden = true; });
+      tg.onEvent("safeAreaChanged", fitHeight);
+      tg.onEvent("contentSafeAreaChanged", fitHeight);
+    } else {
+      document.addEventListener("fullscreenchange", show);
+    }
+    b.hidden = false;
+    show();
+  }
+
+  if (!window.crypto || !crypto.subtle || typeof DecompressionStream === "undefined") {
+    fail("Questo browser non sa decifrare il grafico: aggiorna Telegram o il browser.");
+    return;
+  }
+  window.addEventListener("hashchange", function () { location.reload(); });   // un altro grafico nella stessa pagina
+  load().then(start).catch(function (e) { fail("Grafico non disponibile: " + (e && e.message ? e.message : e)); });
+})();
+</script>
+</body>
+</html>
